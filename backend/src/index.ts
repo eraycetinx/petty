@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { createYoga } from "graphql-yoga";
 import { PrismaClient } from "@prisma/client";
 import schema from "./graphql/schema";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "./helpers/constant";
 
 // Create Prism client instance.

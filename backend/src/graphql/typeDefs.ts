@@ -118,7 +118,6 @@ const typeDefs = `#graphql
             email: String!,
             password: String!,
             deviceToken: String!, 
-            role: Role!, 
             userDetails: detailsInput!
         ): LoginType!
         signIn(email: String!, password: String!, deviceToken: String!): LoginType!

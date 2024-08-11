@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 import { generateToken } from "../helpers/token";
 import pubsub from "../helpers/pubsub";
-import { withFilter, PubSub } from "graphql-subscriptions";
+import { withFilter } from "graphql-subscriptions";
 
 const resolvers = {
   Node: {
@@ -200,20 +200,64 @@ const resolvers = {
   Mutation: {
     createUser: async (
       _: any,
-      {
-        deviceToken,
-        email,
-        password,
-        username,
-        userDetails: { lastName, name, phone, gender },
-      }: ICreateInput,
+      args: ICreateInput,
       { prisma }: Context
     ): Promise<ILoginType> => {
       try {
-        if (!username || !email || !password || !deviceToken) {
+        const {
+          deviceToken,
+          email,
+          password,
+          username,
+          userDetails: { lastName, name, phone, gender },
+        } = args;
+
+        const requiredFields: Array<keyof ICreateInput> = [
+          "username",
+          "email",
+          "password",
+          "deviceToken",
+          "userDetails",
+        ];
+
+        // Kontrol edilecek tüm alanları belirleyin
+        const fieldsToCheck = [
+          ...requiredFields,
+          "userDetails.name",
+          "userDetails.lastName",
+          "userDetails.phone",
+          "userDetails.gender",
+        ];
+
+        for (const field of fieldsToCheck) {
+          const value = field.includes(".")
+            ? (args as any)[field.split(".")[0]][field.split(".")[1]]
+            : (args as any)[field];
+
+          if (typeof value === "string" && value.trim().length === 0) {
+            return {
+              status: false,
+              message: "Please provide all required fields.",
+              token: "",
+            };
+          } else if (value === undefined || value === null) {
+            return {
+              status: false,
+              message: "Please provide all required fields.",
+              token: "",
+            };
+          }
+        }
+
+        // user email valid mi
+        if (
+          !email.match(
+            /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+          )
+        ) {
           return {
             status: false,
-            message: "Please provide all required fields.",
+            message: "email is not valid",
             token: "",
           };
         }
@@ -281,6 +325,19 @@ const resolvers = {
           return {
             status: false,
             message: "Please provide all required fields.",
+            token: "",
+          };
+        }
+
+        // user email valid mi
+        if (
+          !email.match(
+            /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+          )
+        ) {
+          return {
+            status: false,
+            message: "email is not valid",
             token: "",
           };
         }
