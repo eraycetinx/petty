@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  Owner
+  Caregiver
+}
+
+enum Gender {
+  Male
+  Female
+}
+
+enum RequestStatus {
+  Pending
+  Accepted
+  Rejected
+  Completed
+}
+
+model User {
+  uuid        String   @id @unique @db.VarChar(64)
+  username    String   @unique @db.VarChar(64)
+  password    String   @db.VarChar(64)
+  email       String   @unique @db.VarChar(255)
+  deviceToken String   @db.VarChar(255)
+  role        Role     @default(Owner) // app içinden değiştirme imkanı olacak
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  Details          Details?   @relation(name: "userDetails")
+  Reviewer         Review[]   @relation(name: "reviewer")
+  Reviewee         Review[]   @relation(name: "reviewee")
+  Pet              Pet[]      @relation(name: "petOwner")
+  Location         Location?  @relation(name: "userLocation")
+  Picture          Picture[]  @relation(name: "userPicture")
+  requestCaregiver Request[]  @relation(name: "reuqestCaregiver")
+  requestOwner     Request[]  @relation(name: "requestOwner")
+  owner            Favorite[] @relation(name: "ownerFavorite")
+  caregiver        Favorite[] @relation(name: "caregiverFavorite")
+}
+
+model Details {
+  uuid       String   @id @unique @db.VarChar(64)
+  userUuid   String   @unique @db.VarChar(64)
+  name       String   @db.VarChar(64)
+  lastName   String   @db.VarChar(64)
+  phone      String   @db.VarChar(64)
+  isVerified Boolean  @default(false)
+  gender     Gender
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(name: "userDetails", fields: [userUuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Review {
+  uuid         String   @id @unique @db.VarChar(64)
+  comment      String   @db.Text
+  rating       Int      @db.Integer // 1-5 arası olacak
+  reviewerUuid String   @db.VarChar(64) // inceleyen kişi
+  revieweeUuid String   @db.VarChar(64) // incelenen kişi
+  reuqestUuid  String   @unique @db.VarChar(64)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reviewer User    @relation(name: "reviewer", fields: [reviewerUuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+  reviewee User    @relation(name: "reviewee", fields: [revieweeUuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+  request  Request @relation(name: "reviewRequest", fields: [reuqestUuid], references: [uuid])
+}
+
+model Pet {
+  uuid      String   @id @unique @db.VarChar(64)
+  name      String   @db.VarChar(64)
+  breed     String   @db.VarChar(64)
+  age       Int      @db.Integer
+  gender    Gender
+  ownerUuid String   @db.VarChar(64)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User      @relation(name: "petOwner", fields: [ownerUuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+  Request Request[] @relation(name: "requestPet")
+}
+
+model Location {
+  uuid     String @id @unique @db.VarChar(64)
+  country  String @db.VarChar(64)
+  city     String @db.VarChar(64)
+  district String @db.VarChar(64)
+
+  user User @relation(name: "userLocation", fields: [uuid], references: [uuid], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model Picture {
+  uuid      String   @id @unique @db.VarChar(64)
+  url       String   @db.VarChar(255)
+  userUuid  String   @db.VarChar(64)
+  createdAt DateTime @default(now())
+
+  user User @relation(name: "userPicture", fields: [userUuid], references: [uuid], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model Request {
+  uuid          String        @id @unique @db.VarChar(64)
+  petUuid       String        @db.VarChar(64)
+  caregiverUuid String        @db.VarChar(64)
+  ownerUuid     String        @db.VarChar(64)
+  status        RequestStatus @default(Pending)
+  reviewed      Boolean       @default(false)
+  startDate     DateTime      @default(now()) @db.Date
+  endDate       DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  pet       Pet     @relation(name: "requestPet", fields: [petUuid], references: [uuid])
+  caregiver User    @relation(name: "reuqestCaregiver", fields: [caregiverUuid], references: [uuid])
+  owner     User    @relation(name: "requestOwner", fields: [ownerUuid], references: [uuid])
+  Review    Review? @relation(name: "reviewRequest")
+}
+
+model Favorite {
+  uuid          String   @id @unique @db.VarChar(64)
+  ownerUuid     String   @db.VarChar(64)
+  caregiverUuid String   @db.VarChar(64)
+  createdAt     DateTime @default(now())
+
+  owner     User @relation(name: "ownerFavorite", fields: [ownerUuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+  caregiver User @relation(name: "caregiverFavorite", fields: [caregiverUuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+}
